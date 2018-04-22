@@ -33,16 +33,19 @@ var shaderProgramObject;
 
 var vao_triangle;
 var vbo_triangle;
-var vbo_triangle_color;
+var vbo_triangle_texture
 
 var vao_quad;
 var vbo_quad;
-var vbo_quad_color;
+var vbo_quad_texture
+
+var triangle_texture,quads_texture;
 
 var angleTriangle=0.0;
 var angleQuad=0.0;
 
 var mvpUniform;
+var uniform_textue0_sampler;
 
 var orthographicProjectionMatrix;
 
@@ -88,13 +91,13 @@ var orthographicProjectionMatrix;
      "#version 300 es"+
     "\n"+
     "in vec4 vPosition;"+
-	"in vec4 vColor;"+
-	"out vec4 vOutColor;"+
+	"in vec2 vTexture0_cords;"+
+	"out vec2 vOutTexture0_cords;"+
     "uniform mat4 u_mvp_matrix;"+
     "void main(void)"+
     "{"+
     "gl_Position = u_mvp_matrix * vPosition;"+
-	"vOutColor=vColor;"+
+	"vOutTexture0_cords=vTexture0_cords;"+
     "}";
 	
 	vertexShaderObject=gl.createShader(gl.VERTEX_SHADER);
@@ -113,15 +116,17 @@ var orthographicProjectionMatrix;
 	
 //*********************************************** Fragment Shader ****************************
 var fragmentShaderSourceCode=
-    "#version 300 es"+
+      "#version 300 es"+
     "\n"+
     "precision highp float;"+
-	"in vec4 vOutColor;"+
+    "in vec2 vOutTexture0_cords;"+
+    "uniform highp sampler2D u_texture0_sampler;"+
     "out vec4 FragColor;"+
     "void main(void)"+
     "{"+
-        "FragColor = vOutColor;"+
+    "FragColor = texture(u_texture0_sampler, vOutTexture0_cords);"+
     "}"
+  
     fragmentShaderObject=gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fragmentShaderObject,fragmentShaderSourceCode);
     gl.compileShader(fragmentShaderObject);
@@ -140,8 +145,9 @@ var fragmentShaderSourceCode=
     gl.attachShader(shaderProgramObject,fragmentShaderObject);
    
   //************* Bind attribute locations
-	gl.bindAttribLocation(shaderProgramObject,WebGLMacros.VDG_ATTRIBUTE_VERTEX,"vPosition");
-//	gl.bindAttribLocation(shaderProgramObject,WebGLMacros.VDG_ATTRIBUTE_COLOR,"vColor");
+	gl.bindAttribLocation(shaderProgramObject,WebGLMacros.VVZ_ATTRIBUTE_VERTEX,"vPosition");
+	gl.bindAttribLocation(shaderProgramObject,WebGLMacros.VVZ_ATTRIBUTE_TEXTURE0,"vTexture0_cords");
+
 	
   //************* Link program 
 	  gl.linkProgram(shaderProgramObject);
@@ -155,9 +161,40 @@ var fragmentShaderSourceCode=
 			}
 		}
 		
+//************************** Generate Textures *******************************
+		
+    triangle_texture = gl.createTexture(); //glGenTexture is replaced with gl.createTexture in WebGL
+										 // createTexture returns a Texture object, which has property object called of Image class
+    triangle_texture.image = new Image();  //Object created and set in object
+    triangle_texture.image.src="stone.png"; //source of image
+    triangle_texture.image.onload = function () // which function to use to load this image. //this is lambda function and same as callback function
+    {
+        gl.bindTexture(gl.TEXTURE_2D, triangle_texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, triangle_texture.image); //(target, level,internalFormat, format, type of texel data, data/class)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    
+    // Load cube Textures
+    quads_texture = gl.createTexture();
+    quads_texture.image = new Image();
+    quads_texture.image.src="Vijay_Kundali.png";
+    quads_texture.image.onload = function ()
+    {
+        gl.bindTexture(gl.TEXTURE_2D, quads_texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, quads_texture.image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+		
+		
 	//********** Bind uniforms
 		mvpUniform=gl.getUniformLocation(shaderProgramObject,"u_mvp_matrix");
-		
+		uniform_textue0_sampler = gl.getUniformLocation(shaderProgramObject,"u_texture0_sampler");
 		
 	//************************* Triangle Vertices ***********************
 	var triangleVertices=new Float32Array([
@@ -195,30 +232,30 @@ var fragmentShaderSourceCode=
     gl.bindVertexArray(null);	
 	
 	
-	var triangleColor = new Float32Array([
-										1.0,0.0,0.0,
-										0.0,1.0,0.0,
-										0.0,0.0,1.0,
-										
-										1.0,0.0,0.0,
-										0.0,1.0,0.0,
-										0.0,0.0,1.0,
-										
-										1.0,0.0,0.0,
-										0.0,1.0,0.0,
-										0.0,0.0,1.0,
-										
-										1.0,0.0,0.0,
-										0.0,1.0,0.0,
-										0.0,0.0,1.0
-										]);
+	var triangleTextureCords = new Float32Array([
+							       0.5, 1.0, // front-top
+                                           0.0, 0.0, // front-left
+                                           1.0, 0.0, // front-right
+                                           
+                                           0.5, 1.0, // right-top
+                                           1.0, 0.0, // right-left
+                                           0.0, 0.0, // right-right
+                                           
+                                           0.5, 1.0, // back-top
+                                           1.0, 0.0, // back-left
+                                           0.0, 0.0, // back-right
+                                           
+                                           0.5, 1.0, // left-top
+                                           0.0, 0.0, // left-left
+                                           1.0, 0.0, // left-right
+                                    			]);
 	gl.bindVertexArray(vao_triangle);
 
-	vbo_triangle_color = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER,vbo_triangle_color);
-	gl.bufferData(gl.ARRAY_BUFFER,triangleColor,gl.STATIC_DRAW);
-	gl.vertexAttribPointer(WebGLMacros.VVZ_ATTRIBUTE_COLOR,3,gl.FLOAT,false,0,0);
-	gl.enableVertexAttribArray(WebGLMacros.VVZ_ATTRIBUTE_COLOR);
+	vbo_triangle_texture = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER,vbo_triangle_texture);
+	gl.bufferData(gl.ARRAY_BUFFER,triangleTextureCords,gl.STATIC_DRAW);
+	gl.vertexAttribPointer(WebGLMacros.VVZ_ATTRIBUTE_TEXTURE0,2,gl.FLOAT,false,0,0);
+	gl.enableVertexAttribArray(WebGLMacros.VVZ_ATTRIBUTE_TEXTURE0);
 	
 	gl.bindBuffer(gl.ARRAY_BUFFER,null);
     gl.bindVertexArray(null);
@@ -272,60 +309,56 @@ var fragmentShaderSourceCode=
     gl.bindBuffer(gl.ARRAY_BUFFER,null);
     gl.bindVertexArray(null);	
 
-		var quadsColor = new Float32Array([
-		1.0, 0.0, 0.0, //RED
-		1.0, 0.0, 0.0, //RED
-		1.0, 0.0, 0.0, //RED
-		1.0, 0.0, 0.0, //RED
-
-		1.0, 0.0, 1.0, //MAGENTA
-		1.0, 0.0, 1.0, //MAGENTA
-		1.0, 0.0, 1.0, //MAGENTA
-		1.0, 0.0, 1.0, //MAGENTA
-
-		0.0, 1.0, 1.0, //CYAN
-		0.0, 1.0, 1.0, //CYAN
-		0.0, 1.0, 1.0, //CYAN
-		0.0, 1.0, 1.0, //CYAN
-
-		0.0, 0.0, 1.0, //BLUE
-		0.0, 0.0, 1.0, //BLUE
-		0.0, 0.0, 1.0, //BLUE
-		0.0, 0.0, 1.0, //BLUE
-
-		0.0, 1.0, 0.0, //GREEN
-		0.0, 1.0, 0.0, //GREEN
-		0.0, 1.0, 0.0, //GREEN
-		0.0, 1.0, 0.0, //GREEN
-
-		1.0, 1.0, 0.0, //YELLOW
-		1.0, 1.0, 0.0, //YELLOW
-		1.0, 1.0, 0.0, //YELLOW
-		1.0, 1.0, 0.0 //YELLOW
-		]);
+		var quadsTextureQuads = new Float32Array([
+		                            0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+                                        
+                                        0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+                                        
+                                        0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+                                        
+                                        0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+                                        
+                                        0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+                                        
+                                        0.0,0.0,
+                                        1.0,0.0,
+                                        1.0,1.0,
+                                        0.0,1.0,
+            ]);
 	gl.bindVertexArray(vao_quad);
 
-	vbo_quad_color = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER,vbo_quad_color);
-	gl.bufferData(gl.ARRAY_BUFFER,quadsColor,gl.STATIC_DRAW);
-	gl.vertexAttribPointer(WebGLMacros.VVZ_ATTRIBUTE_COLOR,3,gl.FLOAT,false,0,0);
-	gl.enableVertexAttribArray(WebGLMacros.VVZ_ATTRIBUTE_COLOR);
+	vbo_quad_texture = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER,vbo_quad_texture);
+	gl.bufferData(gl.ARRAY_BUFFER,quadsTextureQuads,gl.STATIC_DRAW);
+	gl.vertexAttribPointer(WebGLMacros.VVZ_ATTRIBUTE_TEXTURE0,2,gl.FLOAT,false,0,0);
+	gl.enableVertexAttribArray(WebGLMacros.VVZ_ATTRIBUTE_TEXTURE0);
 	
 	gl.bindBuffer(gl.ARRAY_BUFFER,null);
     gl.bindVertexArray(null);
-	
-	
-	gl.bindBuffer(gl.ARRAY_BUFFER,null);
-    gl.bindVertexArray(null);
-	
-	
-	gl.clearDepth(1.0);
-	gl.enable(gl.DEPTH_TEST);
-	gl.depthFunc(gl.GL_LEQUAL);
-	gl.hint(gl.PERSPECTIVE_CORRECTION_HINT, gl.NICEST);
-
 	
 	gl.clearColor(0.0,0.0,0.0,1.0);
+	//gl.clearDepth(1.0);
+	gl.enable(gl.DEPTH_TEST);
+	//gl.depthFunc(gl.GL_LEQUAL);
+	//gl.hint(gl.GL_PERSPECTIVE_CORRECTION_HINT, gl.GL_NICEST);
+	//gl.enable(gl.CULL_FACE);	
+	
+	
 	
 	//orthographicProjectionMatrix=mat4.create();
 	perspectiveProjectionMatrix=mat4.create();
@@ -363,7 +396,7 @@ var fragmentShaderSourceCode=
 	
 	//***************** Translate using matrix multiplication **************************************
 	var translationMatrix = mat4.create();
-	mat4.translate(translationMatrix,translationMatrix,[-1.0,0,-5]);
+	mat4.translate(translationMatrix,translationMatrix,[-1.5,0,-5]);
 	modelViewMatrix=mat4.multiply(modelViewMatrix,modelViewMatrix,translationMatrix)   //Translate
 	
 	mat4.rotateX(modelViewMatrix,modelViewMatrix,0);
@@ -381,6 +414,8 @@ var fragmentShaderSourceCode=
 	mat4.multiply(modelViewProjectionMatrix,perspectiveProjectionMatrix,modelViewMatrix);
 	
 	gl.uniformMatrix4fv(mvpUniform,false,modelViewProjectionMatrix);
+	gl.bindTexture(gl.TEXTURE_2D,triangle_texture);
+    gl.uniform1i(uniform_textue0_sampler, 0);
 	
 	gl.bindVertexArray(vao_triangle);
    
@@ -391,13 +426,13 @@ var fragmentShaderSourceCode=
 	
 //************************** Quads **********************
 	modelViewMatrix=mat4.create();
-	modelViewMatrix=mat4.translate(modelViewMatrix,modelViewMatrix,[1.5,0.0,-6.0])  //Translate
+	modelViewMatrix=mat4.translate(modelViewMatrix,modelViewMatrix,[2.0,0.0,-6.0])  //Translate
     modelViewProjectionMatrix=mat4.create();	
 	
 
 	mat4.rotateX(modelViewMatrix,modelViewMatrix,degreeToRadion(angleTriangle));
-	mat4.rotateY(modelViewMatrix,modelViewMatrix,0);
-	mat4.rotateX(modelViewMatrix,modelViewMatrix,0);
+	mat4.rotateY(modelViewMatrix,modelViewMatrix,degreeToRadion(angleTriangle));
+	mat4.rotateX(modelViewMatrix,modelViewMatrix,degreeToRadion(angleTriangle));
 	
 	gl.useProgram(shaderProgramObject);
     
@@ -405,7 +440,8 @@ var fragmentShaderSourceCode=
 	
 	gl.uniformMatrix4fv(mvpUniform,false,modelViewProjectionMatrix);
 	
-	
+	gl.bindTexture(gl.TEXTURE_2D,quads_texture);
+    gl.uniform1i(uniform_textue0_sampler, 0);
 	gl.bindVertexArray(vao_quad);
 		
 		gl.drawArrays(gl.TRIANGLE_FAN,0,4);
